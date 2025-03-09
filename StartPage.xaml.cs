@@ -2,8 +2,8 @@ namespace Sobrade_kontaktandmed;
 
 public partial class StartPage : ContentPage
 {
-    public List<ContentPage> lehed = new List<ContentPage>() { new Table_Page() };
-    public List<string> tekstid = new List<string> { "Tee lahti Table_Page" };
+    public List<ContentPage> lehed = new List<ContentPage>() { new Table_Page(), new Sobrade_kontaktandmed()};
+    public List<string> tekstid = new List<string> { "Tee lahti Table_Page", "Tee lahti Sobrade_kontaktandmed" };
 
     ScrollView sv;
     VerticalStackLayout vsl;
