@@ -29,15 +29,15 @@ public partial class Sobrade_kontaktandmed : ContentPage
         };
         ec_email = new EntryCell
         {
-            Label = "Telefon:",
-            Placeholder = "Sisesta tel.number",
-            Keyboard = Keyboard.Telephone
-        };
-        ec_telefon = new EntryCell
-        {
             Label = "Email:",
             Placeholder = "Sisesta email",
             Keyboard = Keyboard.Email
+        };
+        ec_telefon = new EntryCell
+        {
+            Label = "Telefon:",
+            Placeholder = "Sisesta tel.number",
+            Keyboard = Keyboard.Telephone
         };
         ec_kirjeldus = new EntryCell
         {
@@ -179,12 +179,15 @@ public partial class Sobrade_kontaktandmed : ContentPage
     }
 
     // Метод для звонка
-    private async void Btn_helistada_Clicked(object? sender, EventArgs e)
+   private async void Btn_helistada_Clicked(object? sender, EventArgs e)
     {
         string telefon = ec_telefon.Text;
         if (!string.IsNullOrWhiteSpace(telefon))
         {
-            Uri telefonUri = new Uri($"Telefon:{telefon}");
+            // Создаем правильный URI для звонка
+            Uri telefonUri = new Uri($"tel:{telefon}");
+            
+            // Открываем приложение для звонков
             await Launcher.OpenAsync(telefonUri);
         }
         else
@@ -193,13 +196,16 @@ public partial class Sobrade_kontaktandmed : ContentPage
         }
     }
 
+
     // Метод для отправки Email
     private async void Btn_email_Clicked(object? sender, EventArgs e)
     {
         string kirjeldus = ec_kirjeldus.Text;
+        string nimi = ec_nimi.Text;  
+        string text = $"Tere, {nimi}";
         EmailMessage e_mail = new EmailMessage
         {
-            Subject = ec_email.Text,
+            Subject = text,
             Body = kirjeldus,
             BodyFormat = EmailBodyFormat.PlainText,
             To = new List<string>(new[] { ec_email.Text })
