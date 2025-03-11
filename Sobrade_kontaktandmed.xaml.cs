@@ -4,12 +4,15 @@ namespace Sobrade_kontaktandmed;
 
 public partial class Sobrade_kontaktandmed : ContentPage
 {
+    private string lisafoto; 
     TableView tableview;
     SwitchCell sc;
     ImageCell ic;
     TableSection fotosection;
     Button btn_sms, btn_email, btn_helistada, btn_puhkus_rnd, btn_pildista, btn_valifoto;
     EntryCell ec_nimi, ec_email, ec_telefon, ec_kirjeldus;
+    Picker picker;
+    string varv;
     
 
     List<string> puhkus = new List<string>
@@ -47,9 +50,18 @@ public partial class Sobrade_kontaktandmed : ContentPage
             Keyboard = Keyboard.Text
         };
 
+        picker = new Picker
+        {
+            Title = "Värvide valik",
+            ItemsSource = new List<string> { "Punane", "Sinine", "Roheline", "Kollane",
+            "Oranz", "Roosa", "Pruun", "Lilla", "Valge" },
+            SelectedIndex = 0
+        };
+        picker.SelectedIndexChanged += Picker_SelectedIndexChanged;
+
         btn_valifoto = new Button
         {
-            Text = "SMS-i saatmine",
+            Text = "Valige foto",
             BackgroundColor = Color.FromArgb("#FFE4E1"),
             TextColor = Color.FromArgb("#FF0000"),
             FontAttributes = FontAttributes.Bold,
@@ -62,7 +74,7 @@ public partial class Sobrade_kontaktandmed : ContentPage
 
         btn_pildista = new Button
         {
-            Text = "SMS-i saatmine",
+            Text = "Tee foto",
             BackgroundColor = Color.FromArgb("#FFE4E1"),
             TextColor = Color.FromArgb("#FF0000"),
             FontAttributes = FontAttributes.Bold,
@@ -114,7 +126,7 @@ public partial class Sobrade_kontaktandmed : ContentPage
 
         btn_puhkus_rnd = new Button
         {
-            Text = "Saatke puhkusetervitused",
+            Text = "Rnd puhkus",
             BackgroundColor = Color.FromArgb("#FFE4E1"),
             TextColor = Color.FromArgb("#FF0000"),
             FontAttributes = FontAttributes.Bold,
@@ -154,7 +166,7 @@ public partial class Sobrade_kontaktandmed : ContentPage
                     ec_kirjeldus
                 },
                 fotosection,
-                new TableSection("Helistada")
+                new TableSection("Helistada ja SMS")
                 {
                     new ViewCell
                     {
@@ -166,7 +178,7 @@ public partial class Sobrade_kontaktandmed : ContentPage
                         }
                     }
                 },
-                new TableSection("SMS ja Puhkus")
+                new TableSection("E-mail ja Puhkus")
                 {
                     new ViewCell
                     {
@@ -192,63 +204,49 @@ public partial class Sobrade_kontaktandmed : ContentPage
                 }
             }
         };
-        Content = tableview;
+        StackLayout st = new StackLayout
+        {
+            Children =
+            {
+                picker,  
+                tableview  
+            }
+        };
+        Content = st;
     }
 
     // Метод для отправки случайного поздравления
     private async void Btn_puhkus_rnd_Clicked(object? sender, EventArgs e)
     {
-        // Создание списка изображений
-        List<string> foto = new List<string>
-        {
-            "pilt2.jpg",
-            "pilt3.jpg",
-            "pilt4.jpg",
-            "pilt5.jpg",
-            "pilt6.jpg"
-        };
-
-        // Выбираем случайное поздравление и изображение
+        // Выбираем случайное поздравление из списка
         Random rnd = new Random();
-        string rndPuhkus = puhkus[rnd.Next(puhkus.Count)];
-        string selectedImage = foto[rnd.Next(foto.Count)];
+        string rnd_puhkus = puhkus[rnd.Next(puhkus.Count)];
 
-        // Получаем контактные данные
+        // Получаем телефон или email из полей ввода
         string telefon = ec_telefon.Text;
         string email = ec_email.Text;
 
-        // Формируем полный путь к файлу
-        string filePath = Path.Combine(FileSystem.CacheDirectory, selectedImage);
+        // Показываем всплывающее окно для выбора метода отправки
+        string action = await DisplayActionSheet("Valige saatmisviis", "Tühista", null, "SMS", "E-mail");
 
-        // Проверяем, существует ли изображение в локальном хранилище
-        if (!File.Exists(filePath))
-        {
-            await DisplayAlert("Viga", "Pildi ei leitud", "OK");
-            return;
-        }
-
-        if (!string.IsNullOrWhiteSpace(telefon))
+        // Обрабатываем выбор
+        if (action == "SMS" && !string.IsNullOrWhiteSpace(telefon))
         {
             // Отправка через SMS
-            await Sms.ComposeAsync(new SmsMessage(rndPuhkus, telefon));
+            await Sms.ComposeAsync(new SmsMessage(rnd_puhkus, telefon));
         }
-        else if (!string.IsNullOrWhiteSpace(email))
+        else if (action == "E-mail" && !string.IsNullOrWhiteSpace(email))
         {
-            // Отправка через Email с вложением
-            var emailMessage = new EmailMessage
+            // Отправка через email
+            var message = new EmailMessage
             {
                 Subject = "Pühadetervitus",
-                Body = rndPuhkus,
+                Body = rnd_puhkus,
                 To = new List<string> { email }
             };
-
-            // Добавление изображения как вложения
-            var attachment = new EmailAttachment(filePath);
-            emailMessage.Attachments.Add(attachment);
-
-            await Email.ComposeAsync(emailMessage);
+            await Email.ComposeAsync(message);
         }
-        else
+        else if (action != "Tühista")
         {
             await DisplayAlert("Viga", "Kontaktandmed puuduvad", "OK");
         }
@@ -256,7 +254,7 @@ public partial class Sobrade_kontaktandmed : ContentPage
 
 
     // Метод для звонка
-   private async void Btn_helistada_Clicked(object? sender, EventArgs e)
+    private async void Btn_helistada_Clicked(object? sender, EventArgs e)
     {
         string telefon = ec_telefon.Text;
         if (!string.IsNullOrWhiteSpace(telefon))
@@ -280,13 +278,22 @@ public partial class Sobrade_kontaktandmed : ContentPage
         string kirjeldus = ec_kirjeldus.Text;
         string nimi = ec_nimi.Text;  
         string text = $"Tere, {nimi}";
-        EmailMessage e_mail = new EmailMessage
+        
+        var e_mail = new EmailMessage
         {
             Subject = text,
             Body = kirjeldus,
             BodyFormat = EmailBodyFormat.PlainText,
             To = new List<string>(new[] { ec_email.Text })
         };
+
+        // Если фото было выбрано, добавляем его как вложение
+        if (!string.IsNullOrEmpty(lisafoto))
+        {
+            e_mail.Attachments.Add(new EmailAttachment(lisafoto));
+        }
+
+        // Отправка email
         if (Email.Default.IsComposeSupported)
         {
             await Email.Default.ComposeAsync(e_mail);
@@ -323,7 +330,7 @@ public partial class Sobrade_kontaktandmed : ContentPage
     private async void Btn_valifoto_Clicked(object sender, EventArgs e)
     {
         FileResult foto = await MediaPicker.Default.PickPhotoAsync();
-        await SavePhoto(foto);
+        await SalvestaFoto(foto);
     }
 
     private async void Btn_pildista_Clicked(object sender, EventArgs e)
@@ -331,24 +338,57 @@ public partial class Sobrade_kontaktandmed : ContentPage
         if (MediaPicker.Default.IsCaptureSupported)
         {
             FileResult foto = await MediaPicker.Default.CapturePhotoAsync();
-            await SavePhoto(foto);
+            await SalvestaFoto(foto);
         }
         else
         {
-            await Shell.Current.DisplayAlert("OOPS", "Your device isn’t supported", "Ok");
+            await Shell.Current.DisplayAlert("Viga", "Teie seade ei ole toetatud", "Ok");
         }
     }
 
     // Метод для сохранения фото в локальное хранилище
-    private async Task SavePhoto(FileResult foto)
+    private async Task SalvestaFoto(FileResult foto)
     {
         if (foto != null)
         {
-            string localFilePath = Path.Combine(FileSystem.CacheDirectory, foto.FileName);
+            // Сохраняем путь к файлу в переменную photoPath
+            lisafoto = Path.Combine(FileSystem.CacheDirectory, foto.FileName);
+            
             using Stream sourceStream = await foto.OpenReadAsync();
-            using FileStream localFileStream = File.OpenWrite(localFilePath);
+            using FileStream localFileStream = File.OpenWrite(lisafoto);
             await sourceStream.CopyToAsync(localFileStream);
-            await Shell.Current.DisplayAlert("Success", "Photo saved successfully", "Ok");
+
+            await Shell.Current.DisplayAlert("Edu", "Foto on edukalt salvestatud", "Ok");
+        }
+    }
+    private void Picker_SelectedIndexChanged(object? sender, EventArgs e)
+    {
+        int index = picker.SelectedIndex; // Получаем индекс выбранного элемента
+
+        // Массив цветов для выбора
+        List<Color> varv = new List<Color>
+        {
+            Color.FromArgb("#fe646f"),  
+            Color.FromArgb("#87CEFA"),  
+            Color.FromArgb("#90EE90"),  
+            Color.FromArgb("#F0E68C"),  
+            Color.FromArgb("#FFA07A"),  
+            Color.FromArgb("#FFB6C1"),  
+            Color.FromArgb("#CD853F"),  
+            Color.FromArgb("#EE82EE"),  
+            Color.FromArgb("#FFFFFF")   
+        };
+
+        // Проверяем, выбран ли валидный индекс
+        if (index >= 0 && index < varv.Count)
+        {
+            Color color = varv[index]; 
+
+            // Меняем фон для TableView
+            if (tableview != null)
+            {
+                tableview.BackgroundColor = color;
+            }
         }
     }
 }
