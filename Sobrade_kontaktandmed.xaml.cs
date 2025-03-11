@@ -8,8 +8,9 @@ public partial class Sobrade_kontaktandmed : ContentPage
     SwitchCell sc;
     ImageCell ic;
     TableSection fotosection;
-    Button btn_sms, btn_email, btn_helistada, btn_puhkus_rnd;
+    Button btn_sms, btn_email, btn_helistada, btn_puhkus_rnd, btn_pildista, btn_valifoto;
     EntryCell ec_nimi, ec_email, ec_telefon, ec_kirjeldus;
+    
 
     List<string> puhkus = new List<string>
     {
@@ -45,6 +46,32 @@ public partial class Sobrade_kontaktandmed : ContentPage
             Placeholder = "Sisesta Kirjeldus",
             Keyboard = Keyboard.Text
         };
+
+        btn_valifoto = new Button
+        {
+            Text = "SMS-i saatmine",
+            BackgroundColor = Color.FromArgb("#FFE4E1"),
+            TextColor = Color.FromArgb("#FF0000"),
+            FontAttributes = FontAttributes.Bold,
+            FontSize = 20,
+            BorderWidth = 2,
+            BorderColor = Color.FromArgb("#CD5C5C"),
+            HorizontalOptions = LayoutOptions.Center
+        };
+        btn_valifoto.Clicked += Btn_valifoto_Clicked;
+
+        btn_pildista = new Button
+        {
+            Text = "SMS-i saatmine",
+            BackgroundColor = Color.FromArgb("#FFE4E1"),
+            TextColor = Color.FromArgb("#FF0000"),
+            FontAttributes = FontAttributes.Bold,
+            FontSize = 20,
+            BorderWidth = 2,
+            BorderColor = Color.FromArgb("#CD5C5C"),
+            HorizontalOptions = LayoutOptions.Center
+        };
+        btn_pildista.Clicked += Btn_pildista_Clicked;
 
         btn_sms = new Button
         {
@@ -127,15 +154,39 @@ public partial class Sobrade_kontaktandmed : ContentPage
                     ec_kirjeldus
                 },
                 fotosection,
-                new TableSection("Tegevused")
+                new TableSection("Helistada")
                 {
                     new ViewCell
                     {
                         View = new StackLayout
                         {
                             Orientation = StackOrientation.Horizontal,
-                            HorizontalOptions = LayoutOptions.CenterAndExpand,
-                            Children = { btn_helistada, btn_sms, btn_email }
+                            HorizontalOptions = LayoutOptions.Center,
+                            Children = { btn_helistada, btn_sms }
+                        }
+                    }
+                },
+                new TableSection("SMS ja Puhkus")
+                {
+                    new ViewCell
+                    {
+                        View = new StackLayout
+                        {
+                            Orientation = StackOrientation.Horizontal,
+                            HorizontalOptions = LayoutOptions.Center,
+                            Children = { btn_email, btn_puhkus_rnd }
+                        }
+                    }
+                },
+                new TableSection("FOTO")
+                {
+                    new ViewCell
+                    {
+                        View = new StackLayout
+                        {
+                            Orientation = StackOrientation.Horizontal,
+                            HorizontalOptions = LayoutOptions.Center,
+                            Children = {  btn_valifoto, btn_pildista }
                         }
                     }
                 }
@@ -147,29 +198,54 @@ public partial class Sobrade_kontaktandmed : ContentPage
     // Метод для отправки случайного поздравления
     private async void Btn_puhkus_rnd_Clicked(object? sender, EventArgs e)
     {
-        // Выбираем случайное поздравление из списка
-        Random rnd = new Random();
-        string rnd_puhkus = puhkus[rnd.Next(puhkus.Count)];
+        // Создание списка изображений
+        List<string> foto = new List<string>
+        {
+            "pilt2.jpg",
+            "pilt3.jpg",
+            "pilt4.jpg",
+            "pilt5.jpg",
+            "pilt6.jpg"
+        };
 
-        // Получаем телефон или email из полей ввода
+        // Выбираем случайное поздравление и изображение
+        Random rnd = new Random();
+        string rndPuhkus = puhkus[rnd.Next(puhkus.Count)];
+        string selectedImage = foto[rnd.Next(foto.Count)];
+
+        // Получаем контактные данные
         string telefon = ec_telefon.Text;
         string email = ec_email.Text;
-        string kirjeldus = ec_kirjeldus.Text;
 
-        if (!string.IsNullOrWhiteSpace(telefon) && !string.IsNullOrWhiteSpace(rnd_puhkus))
+        // Формируем полный путь к файлу
+        string filePath = Path.Combine(FileSystem.CacheDirectory, selectedImage);
+
+        // Проверяем, существует ли изображение в локальном хранилище
+        if (!File.Exists(filePath))
+        {
+            await DisplayAlert("Viga", "Pildi ei leitud", "OK");
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(telefon))
         {
             // Отправка через SMS
-            await Sms.ComposeAsync(new SmsMessage(rnd_puhkus, telefon));
+            await Sms.ComposeAsync(new SmsMessage(rndPuhkus, telefon));
         }
-        else if (!string.IsNullOrWhiteSpace(email) && !string.IsNullOrWhiteSpace(rnd_puhkus))
+        else if (!string.IsNullOrWhiteSpace(email))
         {
-            // Отправка через email
+            // Отправка через Email с вложением
             var emailMessage = new EmailMessage
             {
                 Subject = "Pühadetervitus",
-                Body = rnd_puhkus,
+                Body = rndPuhkus,
                 To = new List<string> { email }
             };
+
+            // Добавление изображения как вложения
+            var attachment = new EmailAttachment(filePath);
+            emailMessage.Attachments.Add(attachment);
+
             await Email.ComposeAsync(emailMessage);
         }
         else
@@ -177,6 +253,7 @@ public partial class Sobrade_kontaktandmed : ContentPage
             await DisplayAlert("Viga", "Kontaktandmed puuduvad", "OK");
         }
     }
+
 
     // Метод для звонка
    private async void Btn_helistada_Clicked(object? sender, EventArgs e)
@@ -241,6 +318,37 @@ public partial class Sobrade_kontaktandmed : ContentPage
             fotosection.Title = "";
             fotosection.Remove(ic);
             sc.Text = "Näita veel";
+        }
+    }
+    private async void Btn_valifoto_Clicked(object sender, EventArgs e)
+    {
+        FileResult foto = await MediaPicker.Default.PickPhotoAsync();
+        await SavePhoto(foto);
+    }
+
+    private async void Btn_pildista_Clicked(object sender, EventArgs e)
+    {
+        if (MediaPicker.Default.IsCaptureSupported)
+        {
+            FileResult foto = await MediaPicker.Default.CapturePhotoAsync();
+            await SavePhoto(foto);
+        }
+        else
+        {
+            await Shell.Current.DisplayAlert("OOPS", "Your device isn’t supported", "Ok");
+        }
+    }
+
+    // Метод для сохранения фото в локальное хранилище
+    private async Task SavePhoto(FileResult foto)
+    {
+        if (foto != null)
+        {
+            string localFilePath = Path.Combine(FileSystem.CacheDirectory, foto.FileName);
+            using Stream sourceStream = await foto.OpenReadAsync();
+            using FileStream localFileStream = File.OpenWrite(localFilePath);
+            await sourceStream.CopyToAsync(localFileStream);
+            await Shell.Current.DisplayAlert("Success", "Photo saved successfully", "Ok");
         }
     }
 }
