@@ -218,35 +218,30 @@ public partial class Sobrade_kontaktandmed : ContentPage
     // Метод для отправки случайного поздравления
     private async void Btn_puhkus_rnd_Clicked(object? sender, EventArgs e)
     {
-        // Выбираем случайное поздравление из списка
         Random rnd = new Random();
         string rnd_puhkus = puhkus[rnd.Next(puhkus.Count)];
 
-        // Получаем телефон или email из полей ввода
         string telefon = ec_telefon.Text;
         string email = ec_email.Text;
 
-        // Показываем всплывающее окно для выбора метода отправки
-        string action = await DisplayActionSheet("Valige saatmisviis", "Tühista", null, "SMS", "E-mail");
+        string tegevust = await DisplayActionSheet("Valige saatmisviis", "Tühista", null, "SMS", "E-mail");
 
-        // Обрабатываем выбор
-        if (action == "SMS" && !string.IsNullOrWhiteSpace(telefon))
+        if (tegevust == "SMS" && !string.IsNullOrWhiteSpace(telefon))
         {
-            // Отправка через SMS
             await Sms.ComposeAsync(new SmsMessage(rnd_puhkus, telefon));
         }
-        else if (action == "E-mail" && !string.IsNullOrWhiteSpace(email))
+        else if (tegevust == "E-mail" && !string.IsNullOrWhiteSpace(email))
         {
-            // Отправка через email
-            var message = new EmailMessage
+            var e_mail = new EmailMessage
             {
                 Subject = "Pühadetervitus",
                 Body = rnd_puhkus,
                 To = new List<string> { email }
             };
-            await Email.ComposeAsync(message);
+
+            await Email.ComposeAsync(e_mail);
         }
-        else if (action != "Tühista")
+        else if (tegevust != "Tühista")
         {
             await DisplayAlert("Viga", "Kontaktandmed puuduvad", "OK");
         }
@@ -259,10 +254,8 @@ public partial class Sobrade_kontaktandmed : ContentPage
         string telefon = ec_telefon.Text;
         if (!string.IsNullOrWhiteSpace(telefon))
         {
-            // Создаем правильный URI для звонка
             Uri telefonUri = new Uri($"tel:{telefon}");
-            
-            // Открываем приложение для звонков
+
             await Launcher.OpenAsync(telefonUri);
         }
         else
@@ -287,13 +280,10 @@ public partial class Sobrade_kontaktandmed : ContentPage
             To = new List<string>(new[] { ec_email.Text })
         };
 
-        // Если фото было выбрано, добавляем его как вложение
         if (!string.IsNullOrEmpty(lisafoto))
         {
             e_mail.Attachments.Add(new EmailAttachment(lisafoto));
         }
-
-        // Отправка email
         if (Email.Default.IsComposeSupported)
         {
             await Email.Default.ComposeAsync(e_mail);
@@ -358,12 +348,14 @@ public partial class Sobrade_kontaktandmed : ContentPage
             using FileStream localFileStream = File.OpenWrite(lisafoto);
             await sourceStream.CopyToAsync(localFileStream);
 
+            ic.ImageSource = ImageSource.FromFile(lisafoto);
+
             await Shell.Current.DisplayAlert("Edu", "Foto on edukalt salvestatud", "Ok");
         }
     }
     private void Picker_SelectedIndexChanged(object? sender, EventArgs e)
     {
-        int index = picker.SelectedIndex; // Получаем индекс выбранного элемента
+        int index = picker.SelectedIndex; 
 
         // Массив цветов для выбора
         List<Color> varv = new List<Color>
@@ -379,12 +371,10 @@ public partial class Sobrade_kontaktandmed : ContentPage
             Color.FromArgb("#FFFFFF")   
         };
 
-        // Проверяем, выбран ли валидный индекс
         if (index >= 0 && index < varv.Count)
         {
             Color color = varv[index]; 
 
-            // Меняем фон для TableView
             if (tableview != null)
             {
                 tableview.BackgroundColor = color;
